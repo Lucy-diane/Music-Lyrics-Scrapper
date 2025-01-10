@@ -41,46 +41,58 @@ def run(playwright: Playwright, title: str, artist: str):
     # Go to the Genius search page
     print(f"Searching for: {search_query}")
     page.goto(search_url, timeout=0)
-    page.wait_for_load_state("networkidle")
+    # page.wait_for_load_state("networkidle")
 
     # Parse search results
+    print("Getting page content")
     search_page_html = page.content()
     soup = BeautifulSoup(search_page_html, "html.parser")
 
+    print("Getting the first result")
     # Select the search results container
     results_div = soup.select_one(".search_results")
-    if not results_div:
-        print("No search results found!")
-        browser.close()
-        return None
+    css_selector = '.column_layout-column_span.column_layout-column_span--primary a'  # Replace with your CSS selector
+    # css_selector = "/html/body/routable-page/ng-outlet/search-results-page/div/div[2]/div[1]/div[1]/search-result-section/div/div[2]/vertical-search-result-items/div/div/vertical-search-result-item/div/vertical-album-card/a"
+    first_res = page.locator(css_selector).first
 
-    # Get the top search result link
-    top_result = results_div.select_one("a")
-    if not top_result:
-        print("No top result link found!")
-        browser.close()
-        return None
+    print(f"The first result is")
+    print(first_res)
 
-    # Extract and navigate to the top result link
-    top_result_link = top_result.get("href")
-    print(f"Navigating to the top result: {top_result_link}")
-    page.goto(top_result_link, timeout=0)
-    page.wait_for_load_state("networkidle")
+    first_res.click()
+    print('Clicked the first div')
+    
+    # if not results_div:
+    #     print("No search results found!")
+    #     browser.close()
+    #     return None
+
+    # # Get the top search result link
+    # top_result = results_div.select_one("a")
+    # if not top_result:
+    #     print("No top result link found!")
+    #     browser.close()
+    #     return None
+
+    # # Extract and navigate to the top result link
+    # top_result_link = top_result.get("href")
+    # print(f"Navigating to the top result: {top_result_link}")
+    # page.goto(top_result_link, timeout=0)
+    # page.wait_for_load_state("networkidle")
 
     # Extract lyrics from the lyrics page
-    lyrics_page_html = page.content()
-    soup = BeautifulSoup(lyrics_page_html, "html.parser")
+    # lyrics_page_html = page.content()
+    # soup = BeautifulSoup(lyrics_page_html, "html.parser")
 
     # Locate the lyrics container
-    lyrics_containers = soup.select('div[class^="Lyrics__Container"]')
+    # lyrics_containers = soup.select('div[class^="Lyrics__Container"]')
 
-    if not lyrics_containers:
-        print("Couldn't find the lyrics on the page!")
-        browser.close()
-        return None
+    # if not lyrics_containers:
+    #     print("Couldn't find the lyrics on the page!")
+    #     browser.close()
+    #     return None
 
-    # Extract lyrics text
-    lyrics = "\n".join([container.get_text(separator="\n", strip=True) for container in lyrics_containers])
+    # # Extract lyrics text
+    # lyrics = "\n".join([container.get_text(separator="\n", strip=True) for container in lyrics_containers])
 
     # Close the browser
     browser.close()
