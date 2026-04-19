@@ -16,6 +16,14 @@ class ScraperHelpersTests(unittest.TestCase):
         """
         self.assertEqual(extract_lyrics_from_html(html), "Line one\nLine two")
 
+    def test_extract_lyrics_from_fallback_container(self):
+        html = """
+        <html><body>
+            <div class="Lyrics__Container-sc-abc">Line A<br/>Line B</div>
+        </body></html>
+        """
+        self.assertEqual(extract_lyrics_from_html(html), "Line A\nLine B")
+
     def test_extract_lyrics_returns_none_when_missing(self):
         self.assertIsNone(extract_lyrics_from_html("<html><body><p>No lyrics</p></body></html>"))
 

@@ -1,6 +1,8 @@
+import os
 from urllib.parse import quote_plus
 from playwright.sync_api import Playwright, sync_playwright
 from bs4 import BeautifulSoup
+from metadata import extract_metadata
 
 
 def build_search_url(title: str, artist: str) -> str:
@@ -31,7 +33,7 @@ def run(playwright: Playwright, title: str, artist: str):
 
     search_url = build_search_url(title, artist)
 
-    browser = playwright.chromium.launch(headless=True)
+    browser = playwright.chromium.launch(headless=True, timeout=30000)
     context = browser.new_context()
     page = context.new_page()
 
