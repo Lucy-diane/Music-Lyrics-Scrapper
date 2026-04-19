@@ -17,14 +17,41 @@ class LyricsRequestHandler(SimpleHTTPRequestHandler):
             self.path = "style.css"
         return super().do_GET()
 
+    def _send_lyrics(self, title, artist):
+        """Run the scraper and send lyrics as the HTTP response."""
+        with sync_playwright() as playwright:
+            lyrics = run(playwright, title, artist)
+
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        if lyrics:
+            self.wfile.write(lyrics.encode("utf-8"))
+        else:
+            self.wfile.write(b"Lyrics not found!")
+
     def do_POST(self):
-        if self.path == "/upload":
+        content_length = int(self.headers["Content-Length"])
+        post_data = self.rfile.read(content_length)
+        content_type = self.headers.get("Content-Type", "")
+
+        if self.path == "/search":
+            # Handle manual title + artist form submission
+            params = parse_qs(post_data.decode("utf-8"))
+            title = params.get("title", [None])[0]
+            artist = params.get("artist", [None])[0]
+            if not title or not artist:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(b"Please provide both a song title and artist name!")
+                return
+            self._send_lyrics(title.strip(), artist.strip())
+
+        elif self.path == "/upload":
             # Parse the multipart form data
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            boundary = self.headers["Content-Type"].split("boundary=")[1].encode()
+            boundary = content_type.split("boundary=")[1].encode()
             parts = post_data.split(b"--" + boundary)
-            
+
             # Extract the file content
             for part in parts:
                 if b"Content-Disposition" in part:
@@ -41,18 +68,7 @@ class LyricsRequestHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(b"Failed to extract metadata!")
                 return
 
-            # Run the scraper
-            with sync_playwright() as playwright:
-                lyrics = run(playwright, title, artist)
-
-            # Send the response
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            if lyrics:
-                self.wfile.write(lyrics.encode("utf-8"))
-            else:
-                self.wfile.write(b"Lyrics not found!")
+            self._send_lyrics(title, artist)
 
 if __name__ == "__main__":
     os.makedirs(UPLOAD_DIR, exist_ok=True)
