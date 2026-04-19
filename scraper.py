@@ -33,69 +33,48 @@ def run(playwright: Playwright, title: str, artist: str):
     search_query = f"{title} {artist}".strip()
     search_url = f"https://genius.com/search?q={search_query.replace(' ', '%20')}"
 
-    # Launch the browser
-    browser = playwright.chromium.launch(headless=False, channel='chrome')
+    # Launch the browser in headless mode
+    browser = playwright.chromium.launch(headless=True)
     context = browser.new_context()
     page = context.new_page()
 
-    # Go to the Genius search page
-    print(f"Searching for: {search_query}")
-    page.goto(search_url, timeout=0)
-    # page.wait_for_load_state("networkidle")
+    lyrics = None
+    try:
+        # Go to the Genius search page
+        print(f"Searching for: {search_query}")
+        page.goto(search_url, timeout=30000)
 
-    # Parse search results
-    print("Getting page content")
-    search_page_html = page.content()
-    soup = BeautifulSoup(search_page_html, "html.parser")
+        # Wait for the first search result link to appear and click it
+        print("Getting the first result")
+        css_selector = '.column_layout-column_span.column_layout-column_span--primary a'
+        first_res = page.locator(css_selector).first
+        first_res.wait_for(timeout=15000)
+        first_res.click()
+        print("Clicked the first result")
 
-    print("Getting the first result")
-    # Select the search results container
-    results_div = soup.select_one(".search_results")
-    css_selector = '.column_layout-column_span.column_layout-column_span--primary a'  # Replace with your CSS selector
-    # css_selector = "/html/body/routable-page/ng-outlet/search-results-page/div/div[2]/div[1]/div[1]/search-result-section/div/div[2]/vertical-search-result-items/div/div/vertical-search-result-item/div/vertical-album-card/a"
-    first_res = page.locator(css_selector).first
+        # Wait for the lyrics page to load
+        page.wait_for_load_state("networkidle", timeout=30000)
 
-    print(f"The first result is")
-    print(first_res)
+        # Extract lyrics from the lyrics page
+        print("Extracting lyrics")
+        lyrics_page_html = page.content()
+        soup = BeautifulSoup(lyrics_page_html, "html.parser")
 
-    first_res.click()
-    print('Clicked the first div')
-    
-    # if not results_div:
-    #     print("No search results found!")
-    #     browser.close()
-    #     return None
+        # Locate the lyrics container (try multiple selectors for robustness)
+        lyrics_containers = soup.select('div[data-lyrics-container="true"]')
+        if not lyrics_containers:
+            lyrics_containers = soup.select('div[class*="Lyrics__Container"]')
 
-    # # Get the top search result link
-    # top_result = results_div.select_one("a")
-    # if not top_result:
-    #     print("No top result link found!")
-    #     browser.close()
-    #     return None
+        if not lyrics_containers:
+            print("Couldn't find the lyrics on the page!")
+        else:
+            # Extract lyrics text
+            lyrics = "\n".join([container.get_text(separator="\n", strip=True) for container in lyrics_containers])
 
-    # # Extract and navigate to the top result link
-    # top_result_link = top_result.get("href")
-    # print(f"Navigating to the top result: {top_result_link}")
-    # page.goto(top_result_link, timeout=0)
-    # page.wait_for_load_state("networkidle")
-
-    # Extract lyrics from the lyrics page
-    # lyrics_page_html = page.content()
-    # soup = BeautifulSoup(lyrics_page_html, "html.parser")
-
-    # Locate the lyrics container
-    # lyrics_containers = soup.select('div[class^="Lyrics__Container"]')
-
-    # if not lyrics_containers:
-    #     print("Couldn't find the lyrics on the page!")
-    #     browser.close()
-    #     return None
-
-    # # Extract lyrics text
-    # lyrics = "\n".join([container.get_text(separator="\n", strip=True) for container in lyrics_containers])
-
-    # Close the browser
-    browser.close()
+    except Exception as e:
+        print(f"Error during scraping: {e}")
+    finally:
+        browser.close()
 
     return lyrics
 

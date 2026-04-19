@@ -9,23 +9,41 @@
 <body>
     <div class="container">
         <h1>🎵 Music Lyrics Scraper 🎵</h1>
+
+        <h2>Search by Title &amp; Artist</h2>
+        <form id="search-form" method="POST" action="/search">
+            <label for="title">Song title:</label>
+            <input type="text" name="title" id="title" placeholder="e.g. Bohemian Rhapsody" required>
+            <label for="artist">Artist name:</label>
+            <input type="text" name="artist" id="artist" placeholder="e.g. Queen" required>
+            <button type="submit">Get Lyrics</button>
+        </form>
+
+        <h2>Or upload an MP3 file</h2>
         <form id="upload-form" method="POST" action="/upload" enctype="multipart/form-data">
             <label for="song-file">Upload a song file (MP3):</label>
             <input type="file" name="song-file" id="song-file" accept=".mp3" required>
             <button type="submit">Get Lyrics</button>
         </form>
+
         <div id="lyrics-box"></div>
     </div>
     <script>
-        document.getElementById("upload-form").onsubmit = async (event) => {
+        async function handleForm(event, url, body) {
             event.preventDefault();
-            const formData = new FormData(event.target);
-            const response = await fetch("/upload", {
-                method: "POST",
-                body: formData,
-            });
+            document.getElementById("lyrics-box").innerHTML = "<p>Searching for lyrics…</p>";
+            const response = await fetch(url, { method: "POST", body });
             const lyrics = await response.text();
             document.getElementById("lyrics-box").innerHTML = `<pre>${lyrics}</pre>`;
+        }
+
+        document.getElementById("search-form").onsubmit = async (event) => {
+            const params = new URLSearchParams(new FormData(event.target));
+            await handleForm(event, "/search", params);
+        };
+
+        document.getElementById("upload-form").onsubmit = async (event) => {
+            await handleForm(event, "/upload", new FormData(event.target));
         };
     </script>
 </body>
