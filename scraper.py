@@ -33,12 +33,12 @@ def run(playwright: Playwright, title: str, artist: str):
 
     search_url = build_search_url(title, artist)
 
-    browser = playwright.chromium.launch(headless=True, timeout=30000)
+    browser = playwright.chromium.launch(headless=True)
     context = browser.new_context()
     page = context.new_page()
 
     try:
-        page.goto(search_url, timeout=30000, wait_until="domcontentloaded")
+        page.goto(search_url, timeout=15000, wait_until="domcontentloaded")
         search_page_html = page.content()
         search_soup = BeautifulSoup(search_page_html, "html.parser")
 
@@ -50,7 +50,7 @@ def run(playwright: Playwright, title: str, artist: str):
         if not top_result_link:
             return None
 
-        page.goto(top_result_link, timeout=30000, wait_until="domcontentloaded")
+        page.goto(top_result_link, timeout=15000, wait_until="domcontentloaded")
         lyrics_page_html = page.content()
         return extract_lyrics_from_html(lyrics_page_html)
     finally:

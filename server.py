@@ -33,7 +33,7 @@ class LyricsRequestHandler(SimpleHTTPRequestHandler):
 
                 for part in parts:
                     if b"Content-Disposition" in part and b"filename=" in part:
-                        _, body = part.split(b"\r\n\r\n", 1)
+                        headers, body = part.split(b"\r\n\r\n", 1)
                         file_name = Path(UPLOAD_DIR) / "uploaded_song.mp3"
                         with open(file_name, "wb") as f:
                             f.write(body.strip(b"\r\n--"))

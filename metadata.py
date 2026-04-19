@@ -2,7 +2,10 @@ from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 
 def normalize_metadata_field(value):
-    return value.strip() if isinstance(value, str) else value
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return cleaned or None
+    return None
 
 
 def extract_metadata(file_path):
