@@ -19,7 +19,7 @@ def extract_lyrics_from_html(html: str):
         return None
 
     lyrics_lines = [container.get_text(separator="\n", strip=True) for container in containers]
-    return "\n".join(line for line in lyrics_lines if line).strip() or None
+    return "\n".join(lyrics_lines).strip() or None
 
 
 def run(playwright: Playwright, title: str, artist: str):

@@ -61,10 +61,11 @@ class LyricsRequestHandler(SimpleHTTPRequestHandler):
                 else:
                     self.wfile.write(b"Lyrics not found!")
             except Exception as exc:
+                print(f"Upload processing error: {exc}")
                 self.send_response(400)
                 self.send_header("Content-type", "text/plain; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(f"Upload failed: {exc}".encode("utf-8"))
+                self.wfile.write(b"Upload processing failed. Please try again.")
 
 if __name__ == "__main__":
     os.makedirs(UPLOAD_DIR, exist_ok=True)
