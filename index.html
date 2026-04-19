@@ -24,8 +24,9 @@
                 method: "POST",
                 body: formData,
             });
-            const lyrics = await response.text();
-            document.getElementById("lyrics-box").innerHTML = `<pre>${lyrics}</pre>`;
+            const message = await response.text();
+            const box = document.getElementById("lyrics-box");
+            box.textContent = message;
         };
     </script>
 </body>
