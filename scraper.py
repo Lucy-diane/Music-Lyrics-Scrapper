@@ -1,103 +1,58 @@
-import os
-from mutagen import File
-from mutagen.easyid3 import EasyID3
+from urllib.parse import quote_plus
 from playwright.sync_api import Playwright, sync_playwright
 from bs4 import BeautifulSoup
 
 
-def extract_metadata(file_path: str):
-    """
-    Extract song metadata (title and artist) from the audio file.
-    """
-    try:
-        audio = File(file_path, easy=True)
-        if not audio:
-            print("Could not read the audio file.")
-            return None, None
+def build_search_url(title: str, artist: str) -> str:
+    query = f"{title} {artist}".strip()
+    return f"https://genius.com/search?q={quote_plus(query)}"
 
-        title = audio.get("title", [None])[0]
-        artist = audio.get("artist", [None])[0]
 
-        if not title or not artist:
-            print("Metadata is missing in the file!")
-        return title, artist
-    except Exception as e:
-        print(f"Error reading metadata: {e}")
-        return None, None
+def extract_lyrics_from_html(html: str):
+    soup = BeautifulSoup(html, "html.parser")
+
+    containers = soup.select('div[data-lyrics-container="true"]')
+    if not containers:
+        containers = soup.select('div[class^="Lyrics__Container"]')
+
+    if not containers:
+        return None
+
+    lyrics_lines = [container.get_text(separator="\n", strip=True) for container in containers]
+    return "\n".join(line for line in lyrics_lines if line).strip() or None
 
 
 def run(playwright: Playwright, title: str, artist: str):
     """
     Perform lyrics scraping from Genius.com.
     """
-    search_query = f"{title} {artist}".strip()
-    search_url = f"https://genius.com/search?q={search_query.replace(' ', '%20')}"
+    if not title or not artist:
+        return None
 
-    # Launch the browser
-    browser = playwright.chromium.launch(headless=False, channel='chrome')
+    search_url = build_search_url(title, artist)
+
+    browser = playwright.chromium.launch(headless=True)
     context = browser.new_context()
     page = context.new_page()
 
-    # Go to the Genius search page
-    print(f"Searching for: {search_query}")
-    page.goto(search_url, timeout=0)
-    # page.wait_for_load_state("networkidle")
+    try:
+        page.goto(search_url, timeout=30000, wait_until="domcontentloaded")
+        search_page_html = page.content()
+        search_soup = BeautifulSoup(search_page_html, "html.parser")
 
-    # Parse search results
-    print("Getting page content")
-    search_page_html = page.content()
-    soup = BeautifulSoup(search_page_html, "html.parser")
+        top_result = search_soup.select_one('a[href*="-lyrics"]')
+        if not top_result:
+            return None
 
-    print("Getting the first result")
-    # Select the search results container
-    results_div = soup.select_one(".search_results")
-    css_selector = '.column_layout-column_span.column_layout-column_span--primary a'  # Replace with your CSS selector
-    # css_selector = "/html/body/routable-page/ng-outlet/search-results-page/div/div[2]/div[1]/div[1]/search-result-section/div/div[2]/vertical-search-result-items/div/div/vertical-search-result-item/div/vertical-album-card/a"
-    first_res = page.locator(css_selector).first
+        top_result_link = top_result.get("href")
+        if not top_result_link:
+            return None
 
-    print(f"The first result is")
-    print(first_res)
-
-    first_res.click()
-    print('Clicked the first div')
-    
-    # if not results_div:
-    #     print("No search results found!")
-    #     browser.close()
-    #     return None
-
-    # # Get the top search result link
-    # top_result = results_div.select_one("a")
-    # if not top_result:
-    #     print("No top result link found!")
-    #     browser.close()
-    #     return None
-
-    # # Extract and navigate to the top result link
-    # top_result_link = top_result.get("href")
-    # print(f"Navigating to the top result: {top_result_link}")
-    # page.goto(top_result_link, timeout=0)
-    # page.wait_for_load_state("networkidle")
-
-    # Extract lyrics from the lyrics page
-    # lyrics_page_html = page.content()
-    # soup = BeautifulSoup(lyrics_page_html, "html.parser")
-
-    # Locate the lyrics container
-    # lyrics_containers = soup.select('div[class^="Lyrics__Container"]')
-
-    # if not lyrics_containers:
-    #     print("Couldn't find the lyrics on the page!")
-    #     browser.close()
-    #     return None
-
-    # # Extract lyrics text
-    # lyrics = "\n".join([container.get_text(separator="\n", strip=True) for container in lyrics_containers])
-
-    # Close the browser
-    browser.close()
-
-    return lyrics
+        page.goto(top_result_link, timeout=30000, wait_until="domcontentloaded")
+        lyrics_page_html = page.content()
+        return extract_lyrics_from_html(lyrics_page_html)
+    finally:
+        browser.close()
 
 
 if __name__ == "__main__":
